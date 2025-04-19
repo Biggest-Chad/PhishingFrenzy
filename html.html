@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Phishing Frenzy - by SWT</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* Container to hold the canvas and overlay */
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background-color: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Game canvas styling */
+        #gameCanvas {
+            background: black; /* Black background as fallback */
+            display: block;
+        }
+
+        /* Question overlay styling - Email window style */
+        #questionOverlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #f0f0f0; /* Light gray background */
+            padding: 20px;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            text-align: left;
+            display: none; /* Hidden by default */
+            width: 500px;
+            font-family: Arial, sans-serif; /* Changed to match start menu font */
+        }
+
+        /* Email header */
+        #emailHeader {
+            background: #0078d4; /* Outlook blue */
+            color: white;
+            padding: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+
+        /* Question text area - Email body */
+        #questionText {
+            margin: 15px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        /* Answer buttons - Styled like email buttons */
+        #questionOverlay button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 10px;
+            font-size: 16px;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.3s;
+        }
+
+        #questionOverlay button:hover {
+            background: #e0e0e0;
+        }
+
+        /* Notification styling */
+        #notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 24px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            display: none; /* Hidden by default */
+            z-index: 1000; /* Ensure it appears above other elements */
+        }
+    </style>
+</head>
+<body>
+    <!-- Container for the game canvas and question overlay -->
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="questionOverlay">
+            <div id="emailHeader">Oops, you got phished! Answer this question to stay safe</div>
+            <p id="questionText"></p>
+            <button id="choice1"></button>
+            <button id="choice2"></button>
+            <button id="choice3"></button>
+            <button id="choice4"></button>
+        </div>
+        <!-- Notification div -->
+        <div id="notification"></div>
+    </div>
+    
+    <!-- Link to the external JavaScript file -->
+    <script src="game.js"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const aspectRatio = 800 / 600; // Original game aspect ratio
+
+        function resizeCanvas() {
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const windowAspect = windowWidth / windowHeight;
+
+            if (windowAspect > aspectRatio) {
+                // Window is wider than the game
+                canvas.height = windowHeight;
+                canvas.width = windowHeight * aspectRatio;
+            } else {
+                // Window is taller than the game
+                canvas.width = windowWidth;
+                canvas.height = windowWidth / aspectRatio;
+            }
+        }
+
+        // Initial resize and event listener
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93235d7ae95dbfba',t:'MTc0NDk3MDk1MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93236f85288bb048',t:'MTc0NDk3MTY4OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
