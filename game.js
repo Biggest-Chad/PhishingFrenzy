@@ -10,6 +10,10 @@ const playerJumpUp = new Image();
 playerJumpUp.src = 'assets/player_jump_up.png'; // Jumping frame
 const playerCrouch = new Image();
 playerCrouch.src = 'assets/player_crouch.png'; // Crouching frame
+const playerWalk1 = new Image();
+playerWalk1.src = 'assets/player_walk_1.png'; // Walking frame 1
+const playerWalk2 = new Image();
+playerWalk2.src = 'assets/player_walk_2.png'; // Walking frame 2
 
 // Load enemy image
 const enemyImage = new Image();
@@ -45,10 +49,21 @@ let volume = 0.5; // Set initial volume to 50%
 let audioInitialized = false;
 let gameStarted = false;
 
+let audioContext = null;
+let filter = null;
+let gameMusicSource = null;
+
+// Create an array for walking frames
+const walkingFrames = [playerWalk1, playerWalk2];
+let currentWalkFrame = 0; // Index for the current walking frame
+const walkFrameDuration = 200; // Duration for each walking frame in milliseconds
+let lastWalkFrameSwitch = Date.now(); // Timer for switching walking frames
+
 // Initialize audio
 function initAudioWithDelay() {
     if (!audioInitialized && !gameStarted) {
         menuMusic.volume = isMuted ? 0 : volume;
+        menuMusic.currentTime = 0;
         menuMusic.play().then(() => {
             audioInitialized = true;
             console.log("Menu music started successfully");
@@ -118,38 +133,50 @@ function handleMusic(newState) {
         gameMusic.pause();
         gameMusic.currentTime = 0;
         menuMusic.volume = isMuted ? 0 : volume;
-        menuMusic.currentTime = 0; // Reset menu music position
+        menuMusic.currentTime = 0;
         menuMusic.play().catch(error => {
             console.log("Menu music playback failed:", error);
         });
     } else if (newState === "playing") {
-        if (!gameMusic.played.length) { // Only start if not already playing
-            menuMusic.pause();
-            menuMusic.currentTime = 0;
-            gameMusic.volume = isMuted ? 0 : volume;
-            gameMusic.currentTime = 0; // Reset game music position
-            gameMusic.play().catch(error => {
+        menuMusic.pause();
+        menuMusic.currentTime = 0;
+        gameMusic.volume = isMuted ? 0 : volume;
+        if (gameMusic.paused) {
+            gameMusic.currentTime = 0;
+            gameMusic.loop = true;
+            gameMusic.play().then(() => {
+                console.log("Game music started successfully");
+            }).catch(error => {
                 console.log("Game music playback failed:", error);
+                // Retry once after user interaction
+                document.addEventListener('click', () => {
+                    if (game.gameState === "playing") {
+                        gameMusic.play().catch(error => {
+                            console.log("Game music retry failed:", error);
+                        });
+                    }
+                }, { once: true });
             });
-        } else {
-            gameMusic.volume = isMuted ? 0 : volume; // Just restore volume
         }
     } else if (newState === "questioning") {
-        gameMusic.volume = isMuted ? 0 : volume * 0.5; // Reduce volume by 50%
+        gameMusic.volume = isMuted ? 0 : volume * 0.5;
     } else if (newState === "gameOver") {
         menuMusic.pause();
         menuMusic.currentTime = 0;
         gameMusic.pause();
         gameMusic.currentTime = 0;
-        // Start menu music after game over
-        setTimeout(() => {
-            menuMusic.volume = isMuted ? 0 : volume;
-            menuMusic.play().catch(error => {
-                console.log("Menu music playback failed:", error);
-            });
-        }, 500);
     }
 }
+
+// Add event listener for when the game music ends (backup in case loop doesn't work)
+gameMusic.addEventListener('ended', function() {
+    if (game.gameState === "playing" || game.gameState === "questioning") {
+        gameMusic.currentTime = 0;
+        gameMusic.play().catch(error => {
+            console.log("Game music loop failed:", error);
+        });
+    }
+});
 
 // Define initial dimensions
 const MAX_WIDTH = 1920;  // 1080p max width
@@ -199,156 +226,473 @@ const game = {
     nextPhishSpawnTime: Date.now(), // Next spawn time for phish
     nextRandomSpawnTime: Date.now(), // Next spawn time for random enemies
     questions: [
-        // Comprehensive list of educational questions
-        {
-            question: "What is a common sign of a phishing email?",
-            choices: ["Personalized greeting", "Urgent language", "Correct spelling", "Long email address"],
-            correct: 1
-        },
-        {
-            question: "What should you do with a suspicious email?",
-            choices: ["Click links to investigate", "Reply to sender", "Report to IT", "Ignore it"],
-            correct: 2
-        },
-        {
-            question: "Which is a safe practice to avoid phishing?",
-            choices: ["Same password everywhere", "Click unknown links", "Enable 2FA", "Share passwords"],
-            correct: 2
-        },
-        // Email Phishing
-        {
-            question: "What is a red flag that an email might be a phishing attempt?",
-            choices: ["A generic greeting like 'Dear Customer'", "A professional signature", "A company logo", "No attachments"],
-            correct: 0
-        },
-        {
-            question: "What should you check to confirm an email sender's legitimacy?",
-            choices: ["The sender's email address", "The email subject line", "The email's font style", "The time it was sent"],
-            correct: 0
-        },
-        {
-            question: "What's the best action if you get an email asking for urgent login details?",
-            choices: ["Report it to your IT team", "Reply with your credentials", "Click the link to verify", "Forward it to a coworker"],
-            correct: 0
-        },
-        {
-            question: "What is spear phishing?",
-            choices: ["A phishing attack targeting a specific person", "A random email scam", "A virus in an email attachment", "A secure email protocol"],
-            correct: 0
-        },
-        {
-            question: "Why is it risky to click links in unexpected emails?",
-            choices: ["They could take you to fake websites", "They always download software", "They improve your security", "They notify your IT team"],
-            correct: 0
-        },
-        // Password Reuse
-        {
-            question: "Why is reusing passwords across sites dangerous?",
-            choices: ["A breach in one site risks all accounts", "It makes passwords harder to type", "It slows down websites", "It locks accounts faster"],
-            correct: 0
-        },
-        {
-            question: "What makes a password strong?",
-            choices: ["Mixing letters, numbers, and symbols", "Using your pet's name", "Keeping it short and simple", "Repeating the same character"],
-            correct: 0
-        },
-        {
-            question: "How does a password manager improve security?",
-            choices: ["It creates and saves unique passwords", "It shares passwords with others", "It emails your passwords", "It shortens login times"],
-            correct: 0
-        },
-        {
-            question: "What's a risk of using your birthday in a password?",
-            choices: ["It's easy for attackers to guess", "It's too long to remember", "It expires quickly", "It confuses websites"],
-            correct: 0
-        },
-        {
-            question: "What happens if a reused password is stolen?",
-            choices: ["Attackers can access multiple accounts", "Only one account is affected", "Your password gets stronger", "Your account locks automatically"],
-            correct: 0
-        },
-        // Credential Theft
-        {
-            question: "What does credential theft mean?",
-            choices: ["Stealing login usernames and passwords", "Losing your work badge", "Forgetting your login details", "Sharing passwords with coworkers"],
-            correct: 0
-        },
-        {
-            question: "How might attackers steal your credentials?",
-            choices: ["Phishing emails, malware, or weak passwords", "Sending you a security update", "Asking politely via email", "Improving your account security"],
-            correct: 0
-        },
-        {
-            question: "What's a good way to prevent credential theft?",
-            choices: ["Use strong passwords and MFA", "Write passwords on paper", "Reuse passwords across sites", "Click all email links"],
-            correct: 0
-        },
-        {
-            question: "What is a keylogger?",
-            choices: ["Software that records what you type", "A tool to lock your keyboard", "A password generator", "An email security feature"],
-            correct: 0
-        },
-        {
-            question: "How can phishing emails lead to credential theft?",
-            choices: ["By tricking you into entering details on fake sites", "By locking your account", "By sending you a new password", "By updating your security settings"],
-            correct: 0
-        },
-        // Multi-Factor Authentication (MFA)
-        {
-            question: "What is multi-factor authentication (MFA)?",
-            choices: ["Using two or more ways to prove your identity", "Having multiple passwords", "Logging in from two devices", "Sharing login codes"],
-            correct: 0
-        },
-        {
-            question: "Why does MFA make accounts safer?",
-            choices: ["It adds extra security beyond a password", "It simplifies login steps", "It removes the need for passwords", "It speeds up access"],
-            correct: 0
-        },
-        {
-            question: "What's an example of MFA in action?",
-            choices: ["Password and a texted code", "Username and password only", "Two different passwords", "Email and a security question"],
-            correct: 0
-        },
-        {
-            question: "What's a common MFA factor you 'have'?",
-            choices: ["A phone or security token", "Your favorite color", "Your password", "Your username"],
-            correct: 0
-        },
-        {
-            question: "How does MFA help if your password is stolen?",
-            choices: ["It requires another step attackers can't easily bypass", "It changes your password automatically", "It locks your account", "It emails your IT team"],
-            correct: 0
-        },
-        // Scams
-        {
-            question: "What's a clue you've received a fake invoice scam?",
-            choices: ["A demand for immediate payment", "A receipt for a purchase you made", "A thank-you note", "A detailed order history"],
-            correct: 0
-        },
-        {
-            question: "How do tech support scams often start?",
-            choices: ["An unsolicited call about a virus", "An email from your IT team", "A software update notice", "A scheduled support visit"],
-            correct: 0
-        },
-        {
-            question: "What should you do with a 'You've won a prize!' email?",
-            choices: ["Delete it without replying", "Click to claim your prize", "Send your bank details", "Share it with friends"],
-            correct: 0
-        },
-        {
-            question: "What's a sign of a CEO fraud scam?",
-            choices: ["An email from your boss asking for urgent money transfers", "A meeting invite from your CEO", "A company-wide announcement", "A payroll update"],
-            correct: 0
-        },
-        {
-            question: "Why is public Wi-Fi risky for work tasks?",
-            choices: ["It might not be secure from eavesdropping", "It's slower than home Wi-Fi", "It costs extra to use", "It blocks work websites"],
-            correct: 0
-        }
-    ],
-    currentQuestion: null,
-    notification: null // Tracks notification message, color, and end time
-};
+            // General Cybersecurity Best Practices
+            {
+                question: "What is a common sign of a phishing email?",
+                choices: ["Personalized greeting", "Correct spelling", "Urgent language", "Long email address"],
+                correct: 2
+            },
+            {
+                question: "What should you do with a suspicious email?",
+                choices: ["Click links to investigate", "Report to IT", "Reply to sender", "Mark as spam"],
+                correct: 1
+            },
+            {
+                question: "What is malware?",
+                choices: ["Software that harms your computer", "A secure login method", "A type of hardware", "An internet provider"],
+                correct: 0
+            },
+            {
+                question: "How can you protect your computer from malware?",
+                choices: ["Click all pop-ups", "Share passwords", "Use the same password everywhere", "Install antivirus software"],
+                correct: 3
+            },
+            {
+                question: "What is ransomware?",
+                choices: ["A backup tool", "Malware that locks your files", "A speed-up tool", "An email scam"],
+                correct: 1
+            },
+            {
+                question: "What should you do if you suspect ransomware?",
+                choices: ["Pay the ransom", "Ignore it", "Disconnect and contact IT", "Restart repeatedly"],
+                correct: 2
+            },
+            {
+                question: "What is social engineering?",
+                choices: ["Improving social media", "Manipulating people for info", "Computer programming", "Networking with colleagues"],
+                correct: 1
+            },
+            {
+                question: "Why lock your computer when stepping away?",
+                choices: ["Save battery", "Prevent unauthorized access", "Update software", "Clear history"],
+                correct: 1
+            },
+            {
+                question: "Why are software updates important?",
+                choices: ["They slow your computer", "They fix security issues", "They’re optional", "They’re only for features"],
+                correct: 1
+            },
+            {
+                question: "What is a VPN?",
+                choices: ["A social platform", "A virus", "A secure internet connection", "A speed booster"],
+                correct: 2
+            },
+            // Email Phishing
+            {
+                question: "What’s a red flag in a phishing email?",
+                choices: ["Company logo", "Spelling mistakes", "Professional signature", "Short message"],
+                correct: 1
+            },
+            {
+                question: "How can you check an email sender’s legitimacy?",
+                choices: ["Subject line", "Font style", "Sender’s email address", "Time sent"],
+                correct: 2
+            },
+            {
+                question: "What to do with an urgent email asking for login details?",
+                choices: ["Reply with details", "Click the link", "Delete it", "Report to IT"],
+                correct: 3
+            },
+            {
+                question: "What is spear phishing?",
+                choices: ["Random email scam", "Targeted phishing attack", "Secure email protocol", "Virus attachment"],
+                correct: 1
+            },
+            {
+                question: "Why avoid clicking links in unexpected emails?",
+                choices: ["They notify IT", "They might install malware", "They improve security", "They’re safe"],
+                correct: 1
+            },
+            {
+                question: "What is a phishing website?",
+                choices: ["Secure login page", "Fake site to steal info", "Shopping site", "Social media"],
+                correct: 1
+            },
+            {
+                question: "How can you verify a website’s security?",
+                choices: ["Check for ads", "Look for ‘https’ and padlock", "Fast loading", "Customer reviews"],
+                correct: 1
+            },
+            {
+                question: "What to do with an email from an unknown sender?",
+                choices: ["Reply to ask who", "Open it", "Report to IT", "Forward to colleagues"],
+                correct: 2
+            },
+            {
+                question: "What is a whaling attack?",
+                choices: ["Malware type", "Phishing targeting executives", "Secure protocol", "Social scam"],
+                correct: 1
+            },
+            {
+                question: "Why avoid email attachments from unknown sources?",
+                choices: ["They’re spam", "They might have malware", "They’re large", "They take space"],
+                correct: 1
+            },
+            // Password Hygiene and Reuse
+            {
+                question: "Why is reusing passwords risky?",
+                choices: ["Harder to type", "One breach risks all accounts", "Slows websites", "Easier to forget"],
+                correct: 1
+            },
+            {
+                question: "What makes a password strong?",
+                choices: ["Pet’s name", "Short and simple", "Mixed letters, numbers, symbols", "Repeated characters"],
+                correct: 2
+            },
+            {
+                question: "How does a password manager help?",
+                choices: ["Shares passwords", "Creates unique passwords", "Emails passwords", "Encrypts them"],
+                correct: 1
+            },
+            {
+                question: "Why avoid using your birthday in passwords?",
+                choices: ["Too long", "Easy to guess", "Expires quickly", "Hard to remember"],
+                correct: 1
+            },
+            {
+                question: "What if a reused password is stolen?",
+                choices: ["Only one account affected", "Multiple accounts at risk", "Password gets stronger", "Account locks"],
+                correct: 1
+            },
+            {
+                question: "What’s a secure password length?",
+                choices: ["4 characters", "6 characters", "At least 12 characters", "8 characters"],
+                correct: 2
+            },
+            {
+                question: "Why avoid dictionary words in passwords?",
+                choices: ["Hard to remember", "Not allowed", "Easy to guess", "Too long"],
+                correct: 2
+            },
+            {
+                question: "What is a passphrase?",
+                choices: ["Malware", "Security question", "Sequence of words", "Username"],
+                correct: 2
+            },
+            {
+                question: "How often should you change passwords?",
+                choices: ["Never", "Every day", "After a breach", "When forgotten"],
+                correct: 2
+            },
+            {
+                question: "What’s the purpose of a security question?",
+                choices: ["Easier passwords", "Verify identity", "Share info", "Speed up login"],
+                correct: 1
+            },
+            // Credential Theft
+            {
+                question: "What is credential theft?",
+                choices: ["Losing a badge", "Forgetting logins", "Stealing login details", "Sharing passwords"],
+                correct: 2
+            },
+            {
+                question: "How might attackers steal credentials?",
+                choices: ["Security updates", "Phishing or malware", "Polite emails", "Asking IT"],
+                correct: 1
+            },
+            {
+                question: "How can you prevent credential theft?",
+                choices: ["Write passwords down", "Reuse passwords", "Use strong passwords and MFA", "Share logins"],
+                correct: 2
+            },
+            {
+                question: "What is a keylogger?",
+                choices: ["Keyboard lock", "Password generator", "Records what you type", "Email feature"],
+                correct: 2
+            },
+            {
+                question: "How do phishing emails steal credentials?",
+                choices: ["Lock your account", "Trick you into fake sites", "Send new passwords", "Improve security"],
+                correct: 1
+            },
+            // Multi-Factor Authentication (MFA)
+            {
+                question: "What is multi-factor authentication (MFA)?",
+                choices: ["Multiple passwords", "Two or more identity proofs", "Two devices", "Shared codes"],
+                correct: 1
+            },
+            {
+                question: "Why does MFA improve security?",
+                choices: ["Simplifies login", "Adds extra security", "Removes passwords", "Speeds access"],
+                correct: 1
+            },
+            {
+                question: "What’s an example of MFA?",
+                choices: ["Username only", "Password only", "Password and texted code", "Two passwords"],
+                correct: 2
+            },
+            {
+                question: "What’s a common MFA factor you ‘have’?",
+                choices: ["Favorite color", "Password", "Phone or token", "Security question"],
+                correct: 2
+            },
+            {
+                question: "How does MFA help if a password is stolen?",
+                choices: ["Changes password", "Requires another step", "Locks account", "Emails IT"],
+                correct: 1
+            },
+            // Threats Faced by Average Users
+            {
+                question: "What’s a clue of a fake invoice scam?",
+                choices: ["Receipt for purchase", "Immediate payment demand", "Thank-you note", "Company logo"],
+                correct: 1
+            },
+            {
+                question: "How do tech support scams often start?",
+                choices: ["IT email", "Software update", "Unsolicited virus call", "Company notice"],
+                correct: 2
+            },
+            {
+                question: "What to do with a ‘You’ve won a prize!’ email?",
+                choices: ["Claim prize", "Delete without replying", "Send bank details", "Forward to IT"],
+                correct: 1
+            },
+            {
+                question: "What’s a sign of a CEO fraud scam?",
+                choices: ["Meeting invite", "Urgent money transfer request", "Company announcement", "Normal email"],
+                correct: 1
+            },
+            {
+                question: "Why is public Wi-Fi risky for work?",
+                choices: ["It’s slow", "It’s not secure", "It costs extra", "It’s unreliable"],
+                correct: 1
+            },
+            {
+                question: "What’s a sign of a scam call?",
+                choices: ["Polite caller", "Asks for personal info", "Known number", "Offers work help"],
+                correct: 1
+            },
+            {
+                question: "What to do with a suspicious call?",
+                choices: ["Give info", "Stay on to investigate", "Hang up and report", "Give manager’s number"],
+                correct: 2
+            },
+            {
+                question: "What is a SIM swapping attack?",
+                choices: ["Improves signal", "Takes over your phone number", "Malware", "Secure login"],
+                correct: 1
+            },
+            {
+                question: "Why be cautious on social media?",
+                choices: ["Slows internet", "Helps attackers trick you", "Fills storage", "Annoys friends"],
+                correct: 1
+            },
+            {
+                question: "What is a privacy setting?",
+                choices: ["Password type", "Controls who sees your info", "Security update", "Account deletion"],
+                correct: 1
+            },
+            // Additional Questions
+            {
+                question: "What is a firewall?",
+                choices: ["Malware", "Monitors network traffic", "Password tool", "Backup system"],
+                correct: 1
+            },
+            {
+                question: "Why back up your data?",
+                choices: ["Runs faster", "Recovers lost files", "Shares files", "Updates software"],
+                correct: 1
+            },
+            {
+                question: "How to store backups securely?",
+                choices: ["Desktop", "External drive or cloud", "Email inbox", "Public computer"],
+                correct: 1
+            },
+            {
+                question: "What is encryption?",
+                choices: ["Malware", "Scrambling data", "Speed boost", "Social feature"],
+                correct: 1
+            },
+            {
+                question: "What is a data breach?",
+                choices: ["Software update", "Unauthorized info access", "New feature", "Virus"],
+                correct: 1
+            },
+            {
+                question: "What to do if you suspect a data breach?",
+                choices: ["Ignore it", "Report to IT", "Share on social media", "Delete files"],
+                correct: 1
+            },
+            {
+                question: "What’s a tactic in phishing emails?",
+                choices: ["Good grammar", "Sense of urgency", "Company logo", "Known address"],
+                correct: 1
+            },
+            {
+                question: "How to dispose of old devices securely?",
+                choices: ["Trash them", "Wipe data and reset", "Give to friends", "Leave at desk"],
+                correct: 1
+            },
+            {
+                question: "Why review app permissions?",
+                choices: ["Runs faster", "Controls data access", "Updates app", "Shares app"],
+                correct: 1
+            },
+            {
+                question: "What’s a man-in-the-middle attack?",
+                choices: ["Phishing email", "Intercepts communication", "Secure method", "Software update"],
+                correct: 1
+            },
+            {
+                question: "How to protect against SIM swapping?",
+                choices: ["Share phone number", "Use PIN and MFA", "Same password", "Ignore carrier calls"],
+                correct: 1
+            },
+            {
+                question: "What’s a zero-day vulnerability?",
+                choices: ["Malware", "Flaw exploited before known", "Secure practice", "Backup strategy"],
+                correct: 1
+            },
+            {
+                question: "Why report security incidents quickly?",
+                choices: ["Avoid work", "Minimize damage", "Get a day off", "Impress boss"],
+                correct: 1
+            },
+            {
+                question: "What’s security awareness training?",
+                choices: ["Virus", "Education on threats", "Speed boost", "Social platform"],
+                correct: 1
+            },
+            {
+                question: "Why be cautious with USB drives?",
+                choices: ["Expensive", "Can carry malware", "Hard to use", "Slow computer"],
+                correct: 1
+            },
+            {
+                question: "How to handle sensitive documents?",
+                choices: ["Leave on desk", "Shred when done", "Share with colleagues", "Post online"],
+                correct: 1
+            },
+            {
+                question: "What’s a DDoS attack?",
+                choices: ["Phishing", "Overwhelms a system", "Secure login", "Software update"],
+                correct: 1
+            },
+            {
+                question: "How to secure your home Wi-Fi?",
+                choices: ["Share password", "Use strong password and WPA3", "Default settings", "Disconnect often"],
+                correct: 1
+            },
+            {
+                question: "What’s a cookie in web browsing?",
+                choices: ["Malware", "Stores browsing info", "Login token", "Speed booster"],
+                correct: 1
+            },
+            {
+                question: "Why clear browser cookies?",
+                choices: ["Runs faster", "Protects privacy", "Updates software", "Saves space"],
+                correct: 1
+            },
+            {
+                question: "Why use a VPN on public Wi-Fi?",
+                choices: ["Faster Wi-Fi", "Encrypts data", "Blocks sites", "Saves battery"],
+                correct: 1
+            },
+            {
+                question: "What’s a security patch?",
+                choices: ["Malware", "Fixes vulnerabilities", "Data backup", "Secure login"],
+                correct: 1
+            },
+            {
+                question: "Why install security patches quickly?",
+                choices: ["New features", "Protects vulnerabilities", "Slows computer", "Frees space"],
+                correct: 1
+            },
+            {
+                question: "What’s a brute force attack?",
+                choices: ["Phishing", "Guessing passwords", "Secure practice", "Software update"],
+                correct: 1
+            },
+            {
+                question: "How to protect against brute force attacks?",
+                choices: ["Short passwords", "Strong passwords and lockout", "Share passwords", "Click links"],
+                correct: 1
+            },
+            {
+                question: "What’s a security token?",
+                choices: ["Malware", "Device for MFA", "Password tool", "Social feature"],
+                correct: 1
+            },
+            {
+                question: "Why keep a security token safe?",
+                choices: ["Expensive", "Accesses accounts", "Hard to replace", "Slows computer"],
+                correct: 1
+            },
+            {
+                question: "What’s a biometric factor in MFA?",
+                choices: ["Password", "Fingerprint or face", "Phone", "Security question"],
+                correct: 1
+            },
+            {
+                question: "What’s a security incident response plan?",
+                choices: ["Malware", "Handles breaches", "Software update", "Social policy"],
+                correct: 1
+            },
+            {
+                question: "What’s a honeypot in cybersecurity?",
+                choices: ["Malware", "Decoy for attackers", "Secure login", "Data backup"],
+                correct: 1
+            },
+            {
+                question: "What’s a security audit?",
+                choices: ["Malware", "Reviews security policies", "Speed boost", "Social platform"],
+                correct: 1
+            },
+            {
+                question: "What’s a penetration test?",
+                choices: ["Malware", "Simulates attack", "Secure practice", "Data backup"],
+                correct: 1
+            },
+            {
+                question: "What’s a security policy?",
+                choices: ["Malware", "Rules for protection", "Software update", "Social feature"],
+                correct: 1
+            },
+            {
+                question: "What’s a risk assessment?",
+                choices: ["Malware", "Evaluates threats", "Speed boost", "Social strategy"],
+                correct: 1
+            },
+            {
+                question: "What’s a security awareness program?",
+                choices: ["Malware", "Trains on threats", "Software update", "Social campaign"],
+                correct: 1
+            },
+            // Scenario-Based Questions
+            {
+                question: "An email from your bank asks for urgent account updates. What do you do?",
+                choices: ["Click and enter details", "Call bank using official number", "Ignore it", "Forward to colleagues"],
+                correct: 1
+            },
+            {
+                question: "You need to access work documents at a coffee shop. What’s safest?",
+                choices: ["Use public Wi-Fi", "Use company VPN", "Wait for office", "Use hotspot"],
+                correct: 1
+            },
+            {
+                question: "A colleague gives you a USB with files. What do you do first?",
+                choices: ["Plug it in", "Scan with antivirus", "Copy to desktop", "Share it"],
+                correct: 1
+            },
+            {
+                question: "You clicked a suspicious link and your computer acts odd. What now?",
+                choices: ["Restart", "Disconnect and contact IT", "Keep working", "Uninstall antivirus"],
+                correct: 1
+            },
+            {
+                question: "Setting up a new work account. How to secure it?",
+                choices: ["Reuse password", "Unique password and MFA", "Use email as password", "Share with team"],
+                correct: 1
+            },
+            {
+                question: "You suspect your account is compromised. What’s first?",
+                choices: ["Ignore it", "Change password and contact IT", "Post online", "Delete files"],
+                correct: 1
+            }
+        ],
+        currentQuestion: null,
+        notification: null
+    }
 
 // Initialize canvas context
 game.ctx = game.canvas.getContext("2d");
@@ -520,11 +864,15 @@ function answerQuestion(choiceIndex) {
     }
     document.getElementById("questionOverlay").style.display = "none";
     game.gameState = game.lives > 0 ? "playing" : "gameOver";
-    handleMusic(game.gameState);
+    
+    // Reset game music state
     if (game.gameState === "playing") {
+        gameMusic.volume = isMuted ? 0 : volume;
         const currentTime = Date.now();
         game.nextPhishSpawnTime = currentTime + (1000 + Math.random() * 2000) * 1.3 / game.difficulty;
         game.nextRandomSpawnTime = currentTime + (2000 + Math.random() * 2000) * 1.3 / game.difficulty;
+    } else {
+        handleMusic("gameOver");
     }
 }
 
@@ -570,11 +918,37 @@ function update() {
 
     const currentTime = Date.now();
 
-    // Switch idle animation frame every second when not jumping
-    if (!game.player.isJumping && currentTime - game.player.lastIdleSwitch > 1000) {
-        game.player.idleFrame = (game.player.idleFrame + 1) % 2;
-        game.player.lastIdleSwitch = currentTime;
+    // Switch idle animation frame every 0.5 seconds (50% faster)
+    if (!game.player.isJumping && !game.player.isMovingLeft && !game.player.isMovingRight) {
+        if (currentTime - game.player.lastIdleSwitch > 500) {
+            game.player.idleFrame = (game.player.idleFrame + 1) % 2; // Toggle between 0 and 1
+            game.player.lastIdleSwitch = currentTime;
+        }
+    } else {
+        // Reset idle frame switch timer when moving
+        game.player.lastIdleSwitch = currentTime; // Prevent idle frame switching while moving
+
+        // Update walking animation frame
+        if (currentTime - lastWalkFrameSwitch > walkFrameDuration) {
+            currentWalkFrame = (currentWalkFrame + 1) % walkingFrames.length; // Switch to the next walking frame
+            lastWalkFrameSwitch = currentTime;
+        }
     }
+
+    // Determine which player image to use based on movement
+    const playerImage = game.player.isJumping ? playerJumpUp :
+                        game.player.isCrouching ? playerCrouch :
+                        game.player.isMovingLeft || game.player.isMovingRight ? walkingFrames[currentWalkFrame] : 
+                        game.player.idleFrame === 0 ? playerIdle1 : playerIdle2; // Use idle frames
+
+    // Render the player image
+    game.ctx.drawImage(
+        playerImage,
+        game.player.x,
+        game.player.y,
+        game.player.displayWidth,
+        game.player.displayHeight
+    );
 
     // Spawn phish obstacles with wavy motion
     if (currentTime > game.nextPhishSpawnTime) {
@@ -688,6 +1062,32 @@ function checkCollision(rect1, rect2) {
            rect1.y + rect1.height > rect2.y;
 }
 
+// Update notification styling in the CSS
+const notificationStyle = `
+    #notification {
+        position: fixed;
+        top: 80px; /* Move down to align with the score counter */
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8); /* Slightly darker for better visibility */
+        color: white;
+        padding: 15px 30px; /* Adjust padding for a better look */
+        border-radius: 10px;
+        font-size: 72px; /* Increase font size to 100% bigger (from 36px to 72px) */
+        font-weight: bold; /* Make the text bold */
+        font-family: 'Segoe UI', Arial, sans-serif; /* Change font for better aesthetics */
+        text-align: center;
+        display: none;
+        z-index: 1000;
+    }
+`;
+
+// Add the style to the document
+const styleSheet = document.createElement("style");
+styleSheet.type = "text/css";
+styleSheet.innerText = notificationStyle;
+document.head.appendChild(styleSheet);
+
 // Render game elements
 function render() {
     game.ctx.clearRect(0, 0, game.width, game.height);
@@ -732,21 +1132,27 @@ function render() {
         game.ctx.font = `${scale(16)}px Arial`;
         game.ctx.textAlign = "center";
         game.ctx.fillText(
-            "Press Spacebar to jump and use the W A S D keys to move around and crouch.",
+            "Press Spacebar to jump - Press S to crouch.",
             game.width / 2,
             scale(280)
         );
         game.ctx.fillText(
+            "Press A to move left, press D to move right.",
+            game.width / 2,
+            scale(300)
+        );
+        game.ctx.fillText(
             "Avoid the phishing emails!",
             game.width / 2,
-            scale(310)
+            scale(320)
         );
     } else if (game.gameState === "playing" || game.gameState === "questioning") {
-        // Draw player with animation and proper scaling
+        // Determine which player image to use based on movement
         const playerImage = game.player.isJumping ? playerJumpUp :
-                          game.player.isCrouching ? playerCrouch :
-                          game.player.idleFrame === 0 ? playerIdle1 : playerIdle2;
-        
+                            game.player.isCrouching ? playerCrouch :
+                            game.player.isMovingLeft || game.player.isMovingRight ? walkingFrames[currentWalkFrame] : 
+                            game.player.idleFrame === 0 ? playerIdle1 : playerIdle2; // Use idle frames
+
         game.ctx.drawImage(
             playerImage,
             game.player.x,
@@ -787,16 +1193,14 @@ function render() {
         game.ctx.fillText(`Score: ${game.score}`, scale(10), scale(30));
         game.ctx.fillText(`Lives: ${game.lives}`, scale(10), scale(60));
 
-        // Render notification
+        // Render notification at the new position
         if (game.notification && Date.now() < game.notification.endTime) {
-            game.ctx.fillStyle = game.notification.color;
-            game.ctx.font = `${scale(24)}px Arial`;
-            game.ctx.textAlign = "center";
-            game.ctx.fillText(
-                game.notification.message,
-                game.width / 2,
-                game.height - scale(50)
-            );
+            const notificationElement = document.getElementById("notification");
+            notificationElement.style.display = "block";
+            notificationElement.style.color = game.notification.color;
+            notificationElement.innerText = game.notification.message;
+        } else {
+            document.getElementById("notification").style.display = "none"; // Hide when not needed
         }
     } else if (game.gameState === "gameOver") {
         // Game over screen
